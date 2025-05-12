@@ -1,66 +1,182 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>oiiai</title>
+    <title>多功能视频播放器</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             margin: 0;
-            overflow: hidden; /* 隐藏滚动条 */
+            overflow: hidden;
+            background-color: black;
+            font-family: Arial, sans-serif;
         }
-        video {
+        #videoContainer {
             width: 100vw;
             height: 100vh;
-            object-fit: cover; /* 保持宽高比并填充整个屏幕 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
         }
-        button {
-            position: absolute;
+        video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        #controls {
+            position: fixed;
             top: 10px;
             left: 10px;
             z-index: 9999;
-            background-color: #fff;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            background-color: rgba(255,255,255,0.7);
             border: 1px solid #000;
             padding: 10px;
             cursor: pointer;
+            border-radius: 5px;
+            min-width: 120px;
+        }
+        button:hover {
+            background-color: rgba(255,255,255,0.9);
+        }
+        .fullscreen #controls {
+            display: none;
+        }
+        #videoSelector {
+            background-color: rgba(255,255,255,0.7);
+            border: 1px solid #000;
+            padding: 9px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #videoSelector:hover {
+            background-color: rgba(255,255,255,0.9);
         }
     </style>
 </head>
 <body>
-
-<video id="myVideo" width="640" height="360" autoplay muted loop playsinline>
-  <source src="oiiai.webm" type="video/webm">
-  您的浏览器不支持 HTML5 视频。
-</video>
-<button id="playButton">取消静音并全屏</button>
+<div id="videoContainer">
+    <video id="myVideo" autoplay muted loop playsinline>
+        <!-- 默认视频源 -->
+        <source src="videos/video1.mp4" type="video/mp4">
+        <source src="videos/video1.webm" type="video/webm">
+        您的浏览器不支持 HTML5 视频。
+    </video>
+    <div id="controls">
+        <button id="playButton">取消静音并全屏</button>
+        <select id="videoSelector">
+            <option value="video1">视频1</option>
+            <option value="video2">视频2</option>
+            <option value="video3">视频3</option>
+        </select>
+    </div>
+</div>
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        var video = document.getElementById("myVideo");
-        var playButton = document.getElementById("playButton");
+        const video = document.getElementById("myVideo");
+        const playButton = document.getElementById("playButton");
+        const videoSelector = document.getElementById("videoSelector");
+        const videoContainer = document.getElementById("videoContainer");
+        let isFullscreen = false;
 
+        // 视频库配置
+        const videoLibrary = {
+            video1: {
+                mp4: "videos/video1.mp4",
+                webm: "videos/video1.webm",
+                name: "视频1"
+            },
+            video2: {
+                mp4: "videos/video2.mp4",
+                webm: "videos/video2.webm",
+                name: "视频2"
+            },
+            video3: {
+                mp4: "videos/video3.mp4",
+                webm: "videos/video3.webm",
+                name: "视频3"
+            }
+        };
+
+        // 切换视频函数
+        function changeVideo(videoId) {
+            const videoSource = videoLibrary[videoId];
+            if (!videoSource) return;
+            
+            video.innerHTML = `
+                <source src="${videoSource.mp4}" type="video/mp4">
+                <source src="${videoSource.webm}" type="video/webm">
+                您的浏览器不支持 HTML5 视频。
+            `;
+            video.load();
+            video.play().catch(e => console.log("自动播放被阻止:", e));
+        }
+
+        // 初始化播放器控制
         playButton.addEventListener("click", function() {
-            // 取消静音
-            video.muted = false;
-
-            // 请求全屏
-            fullScreen();
+            // 切换静音状态
+            video.muted = !video.muted;
+            
+            // 切换全屏
+            if (!isFullscreen) {
+                enterFullscreen();
+            } else {
+                exitFullscreen();
+            }
+            
+            updateButtonText();
         });
 
-        function fullScreen() {
-            if (video.requestFullscreen) {
-                video.requestFullscreen().catch(err => {
-                    console.error("全屏失败: ", err);
-                });
-            } else if (video.mozRequestFullScreen) {
-                video.mozRequestFullScreen();
-            } else if (video.webkitRequestFullscreen) {
-                video.webkitRequestFullscreen();
-            } else if (video.msRequestFullscreen) {
-                video.msRequestFullscreen();
-            }
+        // 视频选择器事件
+        videoSelector.addEventListener("change", function() {
+            changeVideo(this.value);
+        });
+
+        function updateButtonText() {
+            playButton.textContent = video.muted ? 
+                "取消静音并全屏" : 
+                "静音并退出全屏";
         }
+
+        function enterFullscreen() {
+            if (videoContainer.requestFullscreen) {
+                videoContainer.requestFullscreen()
+                    .then(() => { isFullscreen = true; })
+                    .catch(err => console.error("全屏失败: ", err));
+            } else if (videoContainer.webkitRequestFullscreen) {
+                videoContainer.webkitRequestFullscreen();
+                isFullscreen = true;
+            }
+            
+            document.body.classList.add('fullscreen');
+        }
+
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen()
+                    .then(() => { isFullscreen = false; })
+                    .catch(err => console.error("退出全屏失败: ", err));
+            }
+            
+            document.body.classList.remove('fullscreen');
+        }
+
+        // 监听全屏状态变化
+        document.addEventListener('fullscreenchange', () => {
+            isFullscreen = !!document.fullscreenElement;
+            if (!isFullscreen) {
+                document.body.classList.remove('fullscreen');
+                updateButtonText();
+            }
+        });
+
+        // 初始化默认视频
+        changeVideo('video1');
     });
 </script>
-
 </body>
 </html>
